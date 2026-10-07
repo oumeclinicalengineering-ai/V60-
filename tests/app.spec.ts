@@ -1,0 +1,91 @@
+import { test, expect } from "@playwright/test";
+async function fillDemo(page: import("@playwright/test").Page) {
+  for (const [label, value] of [
+    ["① 酸素ボンベ残圧", "12"],
+    ["② FiO₂", "40"],
+    ["③ 分時換気量（MinVent）", "10"],
+    ["④ リーク量（Leak）", "30"],
+    ["⑤ 搬送予定時間", "30"],
+  ])
+    await page.getByLabel(label, { exact: true }).fill(value);
+  await page.getByRole("button", { name: "計算する" }).click();
+}
+test("モバイル入力・結果・検証・リセット・設定", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  await expect(
+    page.getByLabel("① 酸素ボンベ残圧", { exact: true }),
+  ).toHaveValue("");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(
+    page.getByText("FiO₂は21～100%で入力してください"),
+  ).toBeVisible();
+  await fillDemo(page);
+  await expect(page.locator(".big-time")).toHaveText("約28分");
+  await expect(
+    page.getByText("酸素残量が不足する可能性があります"),
+  ).toBeVisible();
+  await expect(page.locator(".simulation-row")).toHaveCount(3);
+  await page.getByLabel("酸素ボンベ残圧を確認", { exact: true }).check();
+  await page.reload();
+  await fillDemo(page);
+  await expect(
+    page.getByLabel("酸素ボンベ残圧を確認", { exact: true }),
+  ).not.toBeChecked();
+  await page.locator(".settings summary").click();
+  await page.getByLabel("安全係数", { exact: true }).fill("50");
+  await expect(page.locator(".result-card")).toHaveCount(0);
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(page.locator(".big-time")).toHaveText("約17分");
+  await page
+    .getByRole("button", { name: "詳細設定をすべて初期値に戻す" })
+    .click();
+  await expect(page.getByLabel("安全係数", { exact: true })).toHaveValue("80");
+  await page.getByLabel("満充填圧", { exact: true }).fill("10");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(
+    page.getByText("ボンベ圧は0より大きく、満充填圧以下で入力してください"),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "詳細設定をすべて初期値に戻す" })
+    .click();
+  await page.getByLabel("② FiO₂", { exact: true }).fill("21");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(
+    page.getByText("FiO₂ 21%では酸素ボンベ消費量計算の対象外です"),
+  ).toBeVisible();
+  await page.getByLabel("① 酸素ボンベ残圧", { exact: true }).fill("1");
+  await page.getByLabel("② FiO₂", { exact: true }).fill("40");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(page.getByText("使用可能な酸素残量がありません")).toBeVisible();
+  await expect(page.locator(".big-time")).toHaveText("約0分");
+  await page.getByRole("button", { name: "入力をクリア" }).click();
+  await expect(
+    page.getByLabel("① 酸素ボンベ残圧", { exact: true }),
+  ).toHaveValue("");
+  await expect(page.locator(".result-card")).toHaveCount(0);
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await expect(
+    page.getByRole("heading", { name: "重要", exact: true }),
+  ).toBeVisible();
+  expect(await page.locator("body").innerText()).not.toMatch(/NaN|Infinity/);
+});
+test("PWAキャッシュからオフライン再読込して計算", async ({ page, context }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  await page.reload();
+  await fillDemo(page);
+  await expect(page.locator(".big-time")).toHaveText("約28分");
+});
