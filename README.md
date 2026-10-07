@@ -64,3 +64,7 @@ src/
 public/         PWAアイコン
 vite.config.ts  React・PWA設定
 ```
+
+## GitHub Pagesでログイン不要の公開
+
+`.github/workflows/pages.yml` はmain更新時にテスト・ビルドしてGitHub Pagesへ配置します。リポジトリの Settings → Pages → Build and deployment → Source を GitHub Actions に設定してください。初回は Actions → Publish to GitHub Pages → Run workflow で実行できます。リポジトリの公開範囲・契約によってPagesの利用可否が異なります。一般公開する設定では利用者のGitHubログインは不要です。公開が成功した後に表示される実際のURLを使用してください。
