@@ -1,243 +1,43 @@
-import { useRef, useState } from "react";
-import { NumberField } from "./components/NumberField";
-import { Results } from "./components/Results";
-import { Checklist } from "./components/Checklist";
-import { SafetyNotice } from "./components/SafetyNotice";
-import { useCalculation, initialSettings } from "./hooks/useCalculation";
-import type { CalculationInput, CylinderSettings } from "./types";
-const mainFields: {
-  key: keyof CalculationInput;
-  label: string;
-  unit: string;
-  help: string;
-  hint?: string;
-  step?: string;
-  min: number;
-  max?: number;
-}[] = [
-  {
-    key: "currentPressure",
-    label: "① 酸素ボンベ残圧",
-    unit: "MPa",
-    help: "酸素ボンベの圧力計を確認して入力します。",
-    step: "0.1",
-    min: 0,
-  },
-  {
-    key: "fio2Percent",
-    label: "② FiO₂",
-    unit: "%",
-    help: "使用中のNPPV装置に設定されている酸素濃度を入力します。",
-    min: 21,
-    max: 100,
-  },
-  {
-    key: "minuteVentilation",
-    label: "③ 分時換気量（MinVent）",
-    unit: "L/min",
-    help: "使用中のNPPV装置に表示されている分時換気量を入力します。",
-    hint: "装置の分時換気量を入力（L/min）",
-    min: 0,
-  },
-  {
-    key: "leakFlow",
-    label: "④ 総リーク量（Total Leak）",
-    unit: "L/min",
-    help: "装置に表示されている総リーク量（Total Leak）を入力します。意図的リークを含むかなど、値の定義を取扱説明書で確認してください。",
-    hint: "装置のTotal Leakを入力（L/min）",
-    min: 0,
-  },
-  {
-    key: "transportMinutes",
-    label: "⑤ 搬送予定時間",
-    unit: "分",
-    help: "準備・移動・引き継ぎを考慮した搬送予定時間を入力します。",
-    min: 0,
-  },
-];
-const settingFields: {
-  key: keyof CylinderSettings;
-  label: string;
-  unit: string;
-  help: string;
-  min: number;
-  max?: number;
-}[] = [
-  {
-    key: "cylinderCapacity",
-    label: "ボンベ容量",
-    unit: "L",
-    help: "満充填時の酸素量です。使用するボンベの仕様を確認してください。",
-    min: 0,
-  },
-  {
-    key: "fullPressure",
-    label: "満充填圧",
-    unit: "MPa",
-    help: "ボンベの満充填時の圧力です。",
-    min: 0,
-  },
-  {
-    key: "reservePressure",
-    label: "安全残圧",
-    unit: "MPa",
-    help: "使用せずに残す圧力です。満充填圧より小さい値を設定します。",
-    min: 0,
-  },
-  {
-    key: "circuitCompensationFlow",
-    label: "回路補正流量",
-    unit: "L/min",
-    help: "簡易推定のための補正値です。メーカー公式値ではありません。",
-    min: 0,
-  },
-  {
-    key: "safetyFactor",
-    label: "安全係数",
-    unit: "%",
-    help: "推定時間に掛ける係数です。50～100%で設定します。",
-    min: 50,
-    max: 100,
-  },
-];
-export default function App() {
-  const c = useCalculation();
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const resultRef = useRef<HTMLDivElement>(null);
-  return (
-    <main>
-      <header>
-        <div className="brand-icon" aria-hidden="true">
-          ＋
-        </div>
-        <div>
-          <p className="brand-kicker">NPPV 患者搬送用</p>
-          <h1>酸素ボンベ残時間計算</h1>
-          <p className="subtitle">V60・ART70などのNPPV装置 ／ 簡易推定</p>
-        </div>
-      </header>
-      <div className="intro">
-        <strong>簡易推定ツール</strong>
-        <span>参考値です。搬送可否を単独で判断しないでください。</span>
-      </div>
-      <form
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (c.calculate())
-            requestAnimationFrame(() => {
-              resultRef.current?.focus({ preventScroll: true });
-              resultRef.current?.scrollIntoView({ block: "start" });
-            });
-          else {
-            setDetailsOpen(true);
-            requestAnimationFrame(() =>
-              document
-                .querySelector<HTMLInputElement>('[aria-invalid="true"]')
-                ?.focus(),
-            );
-          }
-        }}
-      >
-        <section className="panel input-panel">
-          <div className="section-heading">
-            <h2>装置の表示値とボンベ残圧を入力</h2>
-            <span className="step-chip">入力 → 計算</span>
-          </div>
-          <p className="device-guidance">
-            装置ごとに表示名やTotal
-            Leakの定義が異なります。入力する値と回路条件は、取扱説明書・院内基準で確認してください。
-          </p>
-          <div className="fields">
-            {mainFields.map((f) => (
-              <NumberField
-                {...f}
-                key={f.key}
-                value={c.inputs[f.key]}
-                error={c.errors[f.key]}
-                max={
-                  f.key === "currentPressure"
-                    ? Number(c.settings.fullPressure)
-                    : f.max
-                }
-                onChange={(v) => c.changeInput(f.key, v)}
-              />
-            ))}
-          </div>
-          <div className="input-actions">
-            <span>入力値は端末内でのみ使用します。</span>
-            <button
-              type="button"
-              className="text-button"
-              onClick={c.resetInputs}
-            >
-              入力をクリア
-            </button>
-          </div>
-        </section>
-        <button className="calculate-button" type="submit">
-          計算する <span aria-hidden="true">→</span>
-        </button>
-        {c.attempted && Object.keys(c.errors).length > 0 && (
-          <p role="alert" className="error summary-error">
-            入力欄のエラーを修正してください。詳細設定も確認してください。
-          </p>
-        )}
-        {c.message && (
-          <p role="alert" className="error summary-error">
-            {c.message}
-          </p>
-        )}
-        <div ref={resultRef} tabIndex={-1} className="result-focus">
-          {c.result && (
-            <>
-              <Results result={c.result} />
-              <Checklist />
-            </>
-          )}
-        </div>
-        <details
-          className="panel settings"
-          open={detailsOpen}
-          onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
-        >
-          <summary>
-            詳細設定 <span>ボンベ・補正値・安全係数</span>
-          </summary>
-          <p className="settings-warning">
-            回路補正流量は簡易計算用の補正値です。
-            <br />
-            V60・ART70などの実際の酸素消費量を直接示す値ではありません。
-          </p>
-          <div className="fields">
-            {settingFields.map((f) => (
-              <NumberField
-                {...f}
-                key={f.key}
-                value={c.settings[f.key]}
-                error={c.errors[f.key]}
-                onChange={(v) => c.changeSetting(f.key, v)}
-                reset={() => c.changeSetting(f.key, initialSettings()[f.key])}
-              />
-            ))}
-          </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={c.resetSettings}
-          >
-            詳細設定をすべて初期値に戻す
-          </button>
-        </details>
-      </form>
-      <SafetyNotice />
-      <footer>
-        <p>個人情報の入力不要 · 外部送信なし</p>
-        <p>
-          オフライン使用には、一度オンラインで開いて読み込みを完了してください。対応ブラウザでは「ホーム画面に追加」から使用できます。
-        </p>
-        <p>設定を変更した場合は、結果を再計算してください。</p>
-      </footer>
-    </main>
-  );
+import {useState,useRef} from 'react';
+import type {Plan,Evaluation,Resource} from './core/types';
+import {displayAmount,displayAvailable,displayTime,fieldError,invalidate} from './core/validation';
+import {profiles,getProfile} from './profiles';
+import {emptyPlan,demoExample} from './modules/transport/demoModel';
+import {evaluate} from './modules/transport/engine';
+const VERSION='0.4.0-prototype';
+const labels:Record<Resource,string>={oxygen:'酸素',air:'圧縮空気',power:'電源'};
+const checklist=['① 設定：機器・回路・付属品と、FiO₂・換気／リーク・残圧・電源の最新値を実機と照合した','② ガス：酸素・必要な空気、ボンベ・減圧弁・接続・供給能力を確認した','③ 電源：本体・加温加湿器・周辺機器の電源と、切替後の作動を確認した','④ 到着・交換：到着先の接続環境、交換用資源・担当・交換手順を確認した','⑤ 最終確認：緊急時の代替手段を準備し、別の担当者と照合した'];
+const stamp=(s:string)=>s?new Date(s).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',hour12:false})+' JST':'未取得';
+function Check({label,value,onChange,disabled=false}:{label:string;value:boolean;onChange:(v:boolean)=>void;disabled?:boolean}){return <label className="check"><input type="checkbox" checked={value} disabled={disabled} onChange={e=>onChange(e.target.checked)}/><span>{label}</span></label>;}
+function NumberInput({label,unit,value,onChange,hint,error,at}:{label:string;unit:string;value:string;onChange:(v:string)=>void;hint?:string;error?:string;at?:string}){const id=useRef('n-'+Math.random().toString(36).slice(2));return <div className="field"><label htmlFor={id.current}>{label}</label><div className="input-unit"><input id={id.current} type="text" inputMode="decimal" value={value} onChange={e=>onChange(e.target.value)} aria-invalid={!!error} aria-describedby={id.current+'-help'}/><span>{unit}</span></div><small id={id.current+'-help'}>{hint}{at&&<>／取得時刻：{stamp(at)}</>}{error&&<strong className="error">{error}</strong>}</small></div>;}
+export default function App(){
+ const [plan,setPlan]=useState<Plan>(()=>emptyPlan('clinical'));const [result,setResult]=useState<Evaluation|null>(null);
+ const [checks,setChecks]=useState(checklist.map(()=>false));const [changed,setChanged]=useState(false);const [inputAt,setInputAt]=useState('');
+ const profile=getProfile(plan.profileId)!;
+ function change(next:Plan,key?:string){const now=new Date().toISOString();setPlan({...next,readings:{...next.readings,...(key?{[key]:now}:{})}});setInputAt(now);const s=invalidate({result,checks});setResult(s.result);setChecks(s.checks);setChanged(true);}
+ function begin(mode:Plan['mode']){setPlan(emptyPlan(mode));setResult(null);setChecks(checklist.map(()=>false));setChanged(false);setInputAt('');}
+ function example(){change(demoExample());}
+ function calculate(){setResult(evaluate(plan));setChanged(false);setChecks(checklist.map(()=>false));}
+ const allChecks=checks.every(Boolean);const shortage=result?.resources.filter(r=>(r.shortage??0)>0)??[];
+ return <main className="simple-app">
+ <header><div className="brandmark" aria-hidden="true">＋</div><div><small>臨床工学科</small><h1>業務お助け君</h1><p>呼吸療法機器の搬送準備</p></div></header>
+ <div className="mode-row"><button aria-pressed={plan.mode==='clinical'} onClick={()=>begin('clinical')}>実機の準備確認</button><button aria-pressed={plan.mode==='demo'} onClick={()=>begin('demo')}>デモを試す</button></div>
+ <p className="notice">{profile.demo?'デモ・臨床使用不可 — 架空装置の操作例です。':'参考・準備確認用。患者の搬送可否を自動判定しません。'}</p>
+ <section className="card"><h2>1. 入力する</h2>
+ {profile.demo?<div className="row"><p>架空装置 DEMO-01</p><button onClick={example}>デモ例を読み込む</button></div>:<label className="field">使用する機器<select value={plan.profileId} onChange={e=>change({...emptyPlan('clinical'),profileId:e.target.value})}>{profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
+ <div className="grid">
+ <NumberInput label="① 酸素ボンベ残圧" unit="MPa" value={profile.demo?plan.cylinders[0]?.pressure??'':plan.fields.cylinderPressure??''} onChange={v=>change(profile.demo?{...plan,cylinders:plan.cylinders.map((c,i)=>i===0?{...c,pressure:v}:c)}:{...plan,fields:{...plan.fields,cylinderPressure:v}},'cylinderPressure')} hint="ボンベの圧力計を読む" error={result?.errors['field.cylinderPressure']}/>
+ {!profile.demo&&profile.fields.filter(f=>['fio2','vent','leak','addition'].includes(f.id)).map((f,i)=><NumberInput key={f.id} label={`${i+2}. ${f.id==='vent'?'分時換気量（MinVent）':f.id==='leak'?'総リーク量（Total Leak）':f.label}`} unit={f.unit} value={plan.fields[f.id]??''} onChange={v=>change({...plan,fields:{...plan.fields,[f.id]:v}},f.id)} hint={f.location} error={plan.fields[f.id]!==undefined?fieldError(plan.fields[f.id],f)??undefined:undefined}/>)}
+ <NumberInput label="⑤ 搬送予定時間" unit="分" value={plan.segments[0]?.times.move??''} onChange={v=>change({...plan,segments:plan.segments.map((s,i)=>i===0?{...s,times:{...s.times,move:v}}:s)},'transport')} hint="移動に使う時間。往復なら往復分を入力" error={result?.errors['segment.s1.move']}/>
+ </div><details><summary>検査・待機がある場合／電源・その他の入力</summary><label className="field">搬送区分<select value={plan.environment} onChange={e=>change({...plan,environment:e.target.value as Plan['environment']})}><option value="internal">院内搬送</option><option value="external">他院搬送（確認のみ）</option></select></label>
+ {plan.segments.map((s,i)=><div key={s.id}><h3>{plan.segments.length>1?s.name:'移動以外に使う時間'}</h3><div className="grid">{(['exam','wait','connect','delay'] as const).map((k)=><NumberInput key={k} label={`${i+1}. ${{exam:'検査',wait:'待機',connect:'接続まで',delay:'追加の遅延'}[k]}`} unit="分" value={s.times[k]} onChange={v=>change({...plan,segments:plan.segments.map((x,j)=>i===j?{...x,times:{...x.times,[k]:v}}:x)})} hint="該当しない場合は0"/>)}{i>0&&<NumberInput label="復路の移動時間" unit="分" value={s.times.move} onChange={v=>change({...plan,segments:plan.segments.map((x,j)=>i===j?{...x,times:{...x.times,move:v}}:x)})}/>}</div></div>)}
+ {profile.demo?<NumberInput label="架空電源の使用可能時間" unit="分" value={plan.powerMinutes} onChange={v=>change({...plan,powerMinutes:v})} hint="デモ専用。電池残量％からは換算しません"/>:<label className="field">電源の状態<input value={plan.fields.power??''} onChange={e=>change({...plan,fields:{...plan.fields,power:e.target.value}})} placeholder="本体・加湿器・周辺機器を確認"/></label>}
+ {!profile.demo&&profile.fields.filter(f=>!['fio2','vent','leak','addition'].includes(f.id)).map(f=><NumberInput key={f.id} label={f.label} unit={f.unit} value={plan.fields[f.id]??''} onChange={v=>change({...plan,fields:{...plan.fields,[f.id]:v}},f.id)} hint={f.location}/>)}
+ </details><div className="row"><small>入力は保存・外部送信しません。</small><button onClick={()=>begin(plan.mode)}>入力をクリア</button></div></section>
+ <button className="primary calculate" onClick={calculate}>{profile.demo?'デモ結果を見る':'資源の確認結果を見る'} →</button>
+ {changed&&<p className="notice" role="alert">入力が変わりました。結果と出発前チェックを更新してください。</p>}
+ <section className="card" aria-label="資源の結果" aria-live="polite"><h2>2. 結果を確認する</h2>{!result?<p>入力後に「結果を見る」を押してください。</p>:<><div className="overall"><strong>総合：{result.overall}</strong><p>{profile.demo?'入力条件でのデモ評価です。':'消費量・電源時間が未確認のため、使用可能時間は算出していません。'}</p></div>{shortage.length>0&&<div className="shortage" role="alert"><strong>⚠ 資源不足</strong>{shortage.map(r=><p key={r.resource}>{labels[r.resource]}：{displayAmount(r.shortage)} {r.unit}不足</p>)}</div>}<p><strong>次の行動：</strong>{shortage.length?'資源または搬送計画を見直す':result.overall==='判定保留'?'未確認項目を先輩MEと確認する':'出発前の5項目を確認する'}</p><div className="resources cards">{result.resources.map(r=><div className={'resource '+(r.status==='資源不足'?'danger':r.status==='判定保留'?'hold':'')} key={r.resource}><h3>{labels[r.resource]}</h3><strong>{r.status}</strong>{profile.demo?<p>使用可能 {displayAvailable(r.available)} {r.unit}<br/>必要 {displayAmount(r.needed)} {r.unit}</p>:<p>{r.resource==='oxygen'?'実際の酸素消費量が未確認':r.resource==='air'?'機器・構成ごとの必要性を確認':'バッテリーと接続機器を確認'}</p>}</div>)}</div><details><summary>計算の内訳・未確認事項</summary><p>予定 {displayTime(result.planned)}／遅延込み {displayTime(result.evaluated)}</p>{result.reasons.map((r,i)=><p key={i}>{r}</p>)}{Object.entries(result.errors).map(([k,v])=><p className="error" key={k}>{v}</p>)}{result.resources.map(r=><div key={r.resource}>{r.ledger.map((l,i)=><p key={i}>{l.segment}：開始 {displayAvailable(l.start)} → 使用 {displayAmount(l.used)} → 残り {displayAvailable(l.end)} {r.unit}</p>)}</div>)}<p>入力 {stamp(inputAt)}／計算 {stamp(result.calculatedAt)}<br/>モデル {result.modelId??'未登録'}／プロファイル {result.profileVersion}</p></details></>}</section>
+ <section className="card"><h2>3. 出発前に確認する</h2><p>実機を見ながら確認。分からなければ先輩MEへ。</p><small>確認済み {checks.filter(Boolean).length} / 5</small>{checklist.map((l,i)=><Check key={l} label={l} value={checks[i]} disabled={!result} onChange={v=>setChecks(checks.map((b,j)=>i===j?v:b))}/>)}{allChecks&&<p className="notice">準備チェック完了。患者の搬送可否を示すものではありません。</p>}</section>
+ <details className="card"><summary>根拠・利用上の注意</summary><p>実機側の変更は自動検知できません。出発直前に再照合してください。</p><p>添付版のMinVent＋Total Leak＋補正流量の式は、実機の酸素消費式として確認できていないため使用していません。実機の臨床数値は未表示です。デモは架空の直接流量とボンベ条件のみを用います。</p><p>8機種は調査中。ボンベ換算・係数・電源モデル・院外適用は未登録です。</p><p>問い合わせ先・代替手順：未登録</p><a href="./downloads/clinical-engineering-helper-source.zip" download>ソースをダウンロード</a></details><footer>開発用試作 {VERSION} · 患者情報不要 · 再読込みで入力を消去</footer>
+ </main>;
 }
