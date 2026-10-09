@@ -1,6 +1,5 @@
 import type { CalculationResult } from "../types";
-const duration = (n: number | null) =>
-  n === null ? "対象外" : `約${Math.round(n)}分`;
+import { formatDuration, formatMargin } from "../utils/formatDuration";
 export function Results({ result: r }: { result: CalculationResult }) {
   const max = r.simulation[0].safeDurationMinutes ?? 0;
   return (
@@ -18,9 +17,15 @@ export function Results({ result: r }: { result: CalculationResult }) {
           </p>
         ) : (
           <>
-            <h2>安全使用目安</h2>
+            <h2>安全係数適用後の推定時間</h2>
             <div className="big-time">
-              約<span>{Math.round(r.safeDurationMinutes)}</span>分
+              {r.safeDurationMinutes > 0 && r.safeDurationMinutes < 1 ? (
+                <span className="sub-minute">1分未満</span>
+              ) : (
+                <>
+                  約<span>{Math.round(r.safeDurationMinutes)}</span>分
+                </>
+              )}
             </div>
             <p>安全係数 {Math.round(r.settings.safetyFactor * 100)}% を適用</p>
           </>
@@ -28,7 +33,7 @@ export function Results({ result: r }: { result: CalculationResult }) {
         <div className="metrics">
           <div>
             <span>推定使用可能時間</span>
-            <strong>{duration(r.estimatedDurationMinutes)}</strong>
+            <strong>{formatDuration(r.estimatedDurationMinutes)}</strong>
           </div>
           <div>
             <span>搬送予定時間</span>
@@ -40,13 +45,30 @@ export function Results({ result: r }: { result: CalculationResult }) {
                 ? "不足時間"
                 : "余裕時間"}
             </span>
-            <strong>
-              {r.remainingMargin === null
-                ? "対象外"
-                : duration(Math.abs(r.remainingMargin))}
-            </strong>
+            <strong>{formatMargin(r.remainingMargin)}</strong>
           </div>
         </div>
+        <section className="calculation-settings" aria-label="今回の計算設定">
+          <h3>今回の計算設定</h3>
+          <dl>
+            <div>
+              <dt>ボンベ容量</dt>
+              <dd>{r.settings.cylinderCapacity} L</dd>
+            </div>
+            <div>
+              <dt>満充填圧</dt>
+              <dd>{r.settings.fullPressure} MPa</dd>
+            </div>
+            <div>
+              <dt>安全残圧</dt>
+              <dd>{r.settings.reservePressure} MPa</dd>
+            </div>
+            <div>
+              <dt>回路補正流量</dt>
+              <dd>{r.settings.circuitCompensationFlow} L/min</dd>
+            </div>
+          </dl>
+        </section>
         <p className="result-note">
           搬送可否はこの結果だけで判断しないでください。
         </p>
@@ -62,12 +84,16 @@ export function Results({ result: r }: { result: CalculationResult }) {
             {r.status.title}
           </strong>
           <p>{r.status.description}</p>
-          <small>判定は四捨五入前の値で行っています。</small>
+          <small>
+            判定は四捨五入前の値で行っています。表示上は同じ時間でも、不足となる場合があります。搬送可否を保証する判定ではありません。
+          </small>
         </div>
       )}
       <section className="panel simulation">
         <h2>Total Leak増加時の参考</h2>
-        <p className="muted">リークが増えると、安全使用目安が短くなります。</p>
+        <p className="muted">
+          リークが増えると、安全係数適用後の推定時間が短くなります。
+        </p>
         {r.simulation.map((s) => (
           <div className="simulation-row" key={s.increment}>
             <div className="sim-label">
@@ -84,7 +110,7 @@ export function Results({ result: r }: { result: CalculationResult }) {
                 }}
               />
             </div>
-            <strong>{duration(s.safeDurationMinutes)}</strong>
+            <strong>{formatDuration(s.safeDurationMinutes)}</strong>
           </div>
         ))}
         <details className="formula">

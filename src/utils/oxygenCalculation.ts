@@ -90,22 +90,24 @@ export function calculateTransportStatus(
     return {
       level: "green",
       ratio,
-      title: "酸素残量に余裕があります",
-      description: "搬送予定時間に対して十分な余裕があります。",
+      title: "計算上の時間に余裕があります",
+      description:
+        "安全係数適用後の推定時間が、搬送予定時間の1.5倍以上です。実際の酸素残量や搬送可否を保証するものではありません。",
     };
   if (ratio >= 1)
     return {
       level: "yellow",
       ratio,
-      title: "酸素残量の余裕が少なくなっています",
-      description: "予備酸素ボンベの準備を確認してください。",
+      title: "計算上の時間の余裕が少なくなっています",
+      description:
+        "安全係数適用後の推定時間が、搬送予定時間の1倍以上、1.5倍未満です。予備酸素ボンベの準備を確認してください。",
     };
   return {
     level: "red",
     ratio,
-    title: "酸素残量が不足する可能性があります",
+    title: "計算上の推定時間が搬送予定時間を下回っています",
     description:
-      "現在の条件では安全使用目安が搬送予定時間を下回っています。予備酸素ボンベまたは搬送計画を確認してください。",
+      "現在の条件では安全係数適用後の推定時間が搬送予定時間を下回っています。予備酸素ボンベまたは搬送計画を確認してください。",
   };
 }
 export function calculateLeakSimulation(

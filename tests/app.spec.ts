@@ -34,9 +34,24 @@ test("モバイル入力・結果・検証・リセット・設定", async ({ pa
   await fillDemo(page);
   await expect(page.locator(".big-time")).toHaveText("約28分");
   await expect(
-    page.getByText("酸素残量が不足する可能性があります"),
+    page.getByText("計算上の推定時間が搬送予定時間を下回っています"),
   ).toBeVisible();
   await expect(page.locator(".simulation-row")).toHaveCount(3);
+  await expect(
+    page.getByRole("heading", {
+      name: "安全係数適用後の推定時間",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "今回の計算設定" }),
+  ).toContainText("500 L");
+  await expect(
+    page.getByRole("region", { name: "今回の計算設定" }),
+  ).toContainText("14.7 MPa");
+  await expect(
+    page.getByRole("region", { name: "今回の計算設定" }),
+  ).toContainText("1 MPa");
   await expect(
     page.getByText("Total Leak 30 L/min", { exact: true }),
   ).toBeVisible();
@@ -71,6 +86,11 @@ test("モバイル入力・結果・検証・リセット・設定", async ({ pa
     .getByRole("button", { name: "詳細設定をすべて初期値に戻す" })
     .click();
   await expect(page.getByLabel("安全係数", { exact: true })).toHaveValue("80");
+  await page.getByLabel("ボンベ容量", { exact: true }).fill("400");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(
+    page.getByRole("region", { name: "今回の計算設定" }),
+  ).toContainText("400 L");
   await page.getByLabel("満充填圧", { exact: true }).fill("10");
   await page.getByRole("button", { name: "計算する" }).click();
   await expect(
@@ -118,4 +138,33 @@ test("PWAキャッシュからオフライン再読込して計算", async ({ pa
   await page.reload();
   await fillDemo(page);
   await expect(page.locator(".big-time")).toHaveText("約28分");
+});
+
+test("丸め後の時間に隠れた不足と1分未満の推定時間を明示する", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 812 });
+  await page.goto("/");
+  await fillDemo(page);
+  await page.getByLabel("⑤ 搬送予定時間", { exact: true }).fill("27.7");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(page.locator(".big-time")).toHaveText("約28分");
+  await expect(page.getByText("1分未満の不足", { exact: true })).toBeVisible();
+  await expect(page.locator(".status.red")).toBeVisible();
+  await page.getByLabel("⑤ 搬送予定時間", { exact: true }).fill("27.6");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(page.getByText("1分未満の余裕", { exact: true })).toBeVisible();
+  await expect(page.locator(".status.yellow")).toBeVisible();
+  await page.getByLabel("① 酸素ボンベ残圧", { exact: true }).fill("1.1");
+  await page.getByRole("button", { name: "計算する" }).click();
+  await expect(page.locator(".big-time")).toHaveText("1分未満");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/nppv-sub-minute-result.png",
+    fullPage: true,
+  });
 });
