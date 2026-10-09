@@ -1,1 +1,0 @@
-export const modules=[{id:'respiratory',name:'呼吸療法機器の搬送',description:'酸素・圧縮空気・電源の見積もりと準備確認',status:'試作'},{id:'dialysis',name:'透析業務',description:'業務別ツールを順次追加',status:'準備中'},{id:'circulation',name:'循環補助',description:'業務別ツールを順次追加',status:'準備中'},{id:'inspection',name:'機器点検',description:'業務別ツールを順次追加',status:'準備中'}];
