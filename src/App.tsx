@@ -2,12 +2,12 @@ import {useState,useRef} from 'react';
 import type {Plan,Evaluation,Resource} from './core/types';
 import {displayAmount,displayAvailable,displayTime,fieldError,invalidate} from './core/validation';
 import {profiles,getProfile} from './profiles';
-import {emptyPlan,demoExample} from './modules/transport/demoModel';
+import {emptyPlan,demoExample,initialV60Settings} from './modules/transport/demoModel';
 import {LegacyV60Inputs,LegacyV60Results} from './components/LegacyV60';
 import {ReferenceInputs,ReferenceResults} from './components/ReferenceEstimate';
 import {Guide} from './components/Guide';
 import {evaluate} from './modules/transport/engine';
-const VERSION='0.9.0-prototype';
+const VERSION='0.9.1-prototype';
 const labels:Record<Resource,string>={oxygen:'酸素',air:'圧縮空気',power:'電源'};
 const checklist=['① 設定：機器・回路・付属品と、FiO₂・換気／リーク・残圧・電源の最新値を実機と照合した','② ガス：酸素・必要な空気、ボンベ・減圧弁・接続・供給能力を確認した','③ 電源：本体・加温加湿器・周辺機器の電源と、切替後の作動を確認した','④ 到着・交換：到着先の接続環境、交換用資源・担当・交換手順を確認した','⑤ 最終確認：緊急時の代替手段を準備し、別の担当者と照合した'];
 const stamp=(s:string)=>s?new Date(s).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',hour12:false})+' JST':'未取得';
@@ -27,7 +27,7 @@ export default function App(){
  {profile.demo&&<div className="demo-return"><strong>デモ・臨床使用不可</strong><button onClick={()=>begin('clinical')}>実機の準備確認へ戻る</button></div>}
  <p className="notice">{profile.demo?'デモ・臨床使用不可 — 架空装置の操作例です。':'参考・準備確認用。患者の搬送可否を自動判定しません。'}</p>
  <Guide message={changed?'入力が変わったよ。もう一度「結果を見る」を押してね。':!result?'実機の表示を見ながら、上から順に入力しよう。分からない値は先輩MEに確認してね。':shortage.length?'不足している資源があるよ。先輩MEと一緒に計画を見直そう。':result.overall==='判定保留'?'まだ未確認の項目があるよ。結果の「未確認事項」を開いて確認しよう。':allChecks?'チェックがそろったよ。実機の設定が変わっていないか、最後にもう一度確認しよう。':'結果を確認したら、出発前の5項目を実機と照合しよう。'}/><section className="card"><h2>1. 入力する</h2>
- {profile.demo?<div className="row"><p>架空装置 DEMO-01</p><button onClick={example}>デモ例を読み込む</button></div>:<label className="field">使用する機器<select value={plan.profileId} onChange={e=>change({...emptyPlan('clinical'),profileId:e.target.value})}>{profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
+ {profile.demo?<div className="row"><p>架空装置 DEMO-01</p><button onClick={example}>デモ例を読み込む</button></div>:<label className="field">使用する機器<select value={plan.profileId} onChange={e=>change({...emptyPlan('clinical'),profileId:e.target.value,fields:e.target.value==='v60'?initialV60Settings():{}})}>{profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
  <div className="grid">
  <NumberInput label="① 酸素ボンベ残圧" unit="MPa" value={profile.demo?plan.cylinders[0]?.pressure??'':plan.fields.cylinderPressure??''} onChange={v=>change(profile.demo?{...plan,cylinders:plan.cylinders.map((c,i)=>i===0?{...c,pressure:v}:c)}:{...plan,fields:{...plan.fields,cylinderPressure:v}},'cylinderPressure')} hint="ボンベの圧力計を読む" error={result?.errors['field.cylinderPressure']}/>
  {!profile.demo&&profile.fields.filter(f=>['fio2','vent','leak','addition'].includes(f.id)).map((f,i)=><NumberInput key={f.id} label={`${i+2}. ${f.id==='vent'?'分時換気量（MinVent）':f.id==='leak'?'総リーク量（Total Leak）':f.label}`} unit={f.unit} value={plan.fields[f.id]??''} onChange={v=>change({...plan,fields:{...plan.fields,[f.id]:v}},f.id)} hint={f.location} error={plan.fields[f.id]!==undefined?fieldError(plan.fields[f.id],f)??undefined:undefined}/>)}
