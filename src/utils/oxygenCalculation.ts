@@ -38,7 +38,8 @@ export function validateInput(
     e.fio2Percent = "FiO₂は21～100%で入力してください";
   if (!positive(i.minuteVentilation))
     e.minuteVentilation = "MinVentは0より大きい値で入力してください";
-  if (!nonnegative(i.leakFlow)) e.leakFlow = "Leakは0以上で入力してください";
+  if (!nonnegative(i.leakFlow))
+    e.leakFlow = "Total Leakは0以上で入力してください";
   if (!positive(i.transportMinutes))
     e.transportMinutes = "搬送時間は0より大きい値で入力してください";
   return e;

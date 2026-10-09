@@ -4,7 +4,7 @@ async function fillDemo(page: import("@playwright/test").Page) {
     ["① 酸素ボンベ残圧", "12"],
     ["② FiO₂", "40"],
     ["③ 分時換気量（MinVent）", "10"],
-    ["④ リーク量（Leak）", "30"],
+    ["④ 総リーク量（Total Leak）", "30"],
     ["⑤ 搬送予定時間", "30"],
   ])
     await page.getByLabel(label, { exact: true }).fill(value);
@@ -13,6 +13,17 @@ async function fillDemo(page: import("@playwright/test").Page) {
 test("モバイル入力・結果・検証・リセット・設定", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
+  await expect(
+    page.getByText("V60・ART70などのNPPV装置 ／ 簡易推定"),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("④ 総リーク量（Total Leak）", { exact: true }),
+  ).toBeVisible();
+  const inputBox = await page
+    .getByLabel("① 酸素ボンベ残圧", { exact: true })
+    .boundingBox();
+  expect(inputBox?.height).toBeGreaterThanOrEqual(60);
+  await page.screenshot({ path: "/tmp/nppv-mobile-input.png", fullPage: true });
   await expect(
     page.getByLabel("① 酸素ボンベ残圧", { exact: true }),
   ).toHaveValue("");
@@ -26,6 +37,25 @@ test("モバイル入力・結果・検証・リセット・設定", async ({ pa
     page.getByText("酸素残量が不足する可能性があります"),
   ).toBeVisible();
   await expect(page.locator(".simulation-row")).toHaveCount(3);
+  await expect(
+    page.getByText("Total Leak 30 L/min", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("NPPV装置のバッテリー残量を確認", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "/tmp/nppv-mobile-results.png",
+    fullPage: true,
+  });
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.setViewportSize({ width: 375, height: 812 });
   await page.getByLabel("酸素ボンベ残圧を確認", { exact: true }).check();
   await page.reload();
   await fillDemo(page);

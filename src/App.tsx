@@ -27,7 +27,7 @@ const mainFields: {
     key: "fio2Percent",
     label: "② FiO₂",
     unit: "%",
-    help: "V60に設定されている酸素濃度を入力します。",
+    help: "使用中のNPPV装置に設定されている酸素濃度を入力します。",
     min: 21,
     max: 100,
   },
@@ -35,16 +35,16 @@ const mainFields: {
     key: "minuteVentilation",
     label: "③ 分時換気量（MinVent）",
     unit: "L/min",
-    help: "V60画面に表示されている分時換気量を入力します。",
-    hint: "V60画面に表示されているMinVentを入力",
+    help: "使用中のNPPV装置に表示されている分時換気量を入力します。",
+    hint: "装置の分時換気量を入力（L/min）",
     min: 0,
   },
   {
     key: "leakFlow",
-    label: "④ リーク量（Leak）",
+    label: "④ 総リーク量（Total Leak）",
     unit: "L/min",
-    help: "V60画面に表示されているリーク量を入力します。",
-    hint: "V60画面に表示されているLeakを入力",
+    help: "装置に表示されている総リーク量（Total Leak）を入力します。意図的リークを含むかなど、値の定義を取扱説明書で確認してください。",
+    hint: "装置のTotal Leakを入力（L/min）",
     min: 0,
   },
   {
@@ -111,9 +111,9 @@ export default function App() {
           ＋
         </div>
         <div>
-          <p className="brand-kicker">V60 搬送用</p>
+          <p className="brand-kicker">NPPV 患者搬送用</p>
           <h1>酸素ボンベ残時間計算</h1>
-          <p className="subtitle">NPPV患者 他院搬送用簡易計算ツール</p>
+          <p className="subtitle">V60・ART70などのNPPV装置 ／ 簡易推定</p>
         </div>
       </header>
       <div className="intro">
@@ -125,7 +125,10 @@ export default function App() {
         onSubmit={(e) => {
           e.preventDefault();
           if (c.calculate())
-            requestAnimationFrame(() => resultRef.current?.focus());
+            requestAnimationFrame(() => {
+              resultRef.current?.focus({ preventScroll: true });
+              resultRef.current?.scrollIntoView({ block: "start" });
+            });
           else {
             setDetailsOpen(true);
             requestAnimationFrame(() =>
@@ -138,9 +141,13 @@ export default function App() {
       >
         <section className="panel input-panel">
           <div className="section-heading">
-            <h2>V60の表示値とボンベ残圧を入力</h2>
+            <h2>装置の表示値とボンベ残圧を入力</h2>
             <span className="step-chip">入力 → 計算</span>
           </div>
+          <p className="device-guidance">
+            装置ごとに表示名やTotal
+            Leakの定義が異なります。入力する値と回路条件は、取扱説明書・院内基準で確認してください。
+          </p>
           <div className="fields">
             {mainFields.map((f) => (
               <NumberField
@@ -200,7 +207,7 @@ export default function App() {
           <p className="settings-warning">
             回路補正流量は簡易計算用の補正値です。
             <br />
-            実際のV60の酸素消費量を直接示す値ではありません。
+            V60・ART70などの実際の酸素消費量を直接示す値ではありません。
           </p>
           <div className="fields">
             {settingFields.map((f) => (

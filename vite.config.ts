@@ -10,9 +10,9 @@ export default defineConfig({
       injectRegister: "auto",
       includeAssets: ["icon.svg", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "V60 搬送用 酸素ボンベ残時間計算",
-        short_name: "V60 酸素計算",
-        description: "NPPV患者 他院搬送用簡易計算ツール",
+        name: "NPPV 搬送用 酸素ボンベ残時間計算",
+        short_name: "NPPV 酸素計算",
+        description: "V60・ART70などのNPPV患者 搬送用簡易計算ツール",
         lang: "ja",
         theme_color: "#0968a8",
         background_color: "#ffffff",

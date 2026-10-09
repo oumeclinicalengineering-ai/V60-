@@ -66,7 +66,7 @@ export function Results({ result: r }: { result: CalculationResult }) {
         </div>
       )}
       <section className="panel simulation">
-        <h2>リーク増加時の参考</h2>
+        <h2>Total Leak増加時の参考</h2>
         <p className="muted">リークが増えると、安全使用目安が短くなります。</p>
         {r.simulation.map((s) => (
           <div className="simulation-row" key={s.increment}>
@@ -74,7 +74,7 @@ export function Results({ result: r }: { result: CalculationResult }) {
               <strong>
                 {s.increment === 0 ? "現在" : `+${s.increment} L/min`}
               </strong>
-              <span>Leak {s.leakFlow} L/min</span>
+              <span>Total Leak {s.leakFlow} L/min</span>
             </div>
             <div className="bar-track">
               <div
@@ -94,8 +94,8 @@ export function Results({ result: r }: { result: CalculationResult }) {
           <p>推定酸素消費量：{r.oxygenConsumption.toFixed(2)} L/min</p>
           <p>使用可能量 = 容量 × (残圧 − 安全残圧) ÷ 満充填圧</p>
           <p>
-            酸素消費量 = (MinVent + Leak + 回路補正流量) × (FiO₂ / 100 − 0.21) ÷
-            0.79
+            酸素消費量 = (MinVent + Total Leak + 回路補正流量) × (FiO₂ / 100 −
+            0.21) ÷ 0.79
           </p>
           <p>メーカー公式の計算式ではありません。</p>
         </details>
